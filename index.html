@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <title>SplunkLint - Dashboard XML Validator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@500;600&display=swap');
+        
+        :root {
+            --bg-dark: #0a0e14;
+            --bg-darker: #050709;
+            --bg-panel: #151921;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-blue: #58a6ff;
+            --accent-purple: #bc8cff;
+            --border: #30363d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        header {
+            padding: 3rem 2rem 2rem;
+            background: linear-gradient(180deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+            border-bottom: 2px solid var(--border);
+            animation: slideDown 0.6s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header-left h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+        
+        .github-link:hover {
+            border-color: var(--accent-blue);
+            background: var(--bg-darker);
+            transform: translateY(-2px);
+        }
+        
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .toolbar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            width: 100%;
+            overflow: visible;
+        }
+        
+        @media (min-width: 1024px) {
+            .container {
+                grid-template-columns: 1.2fr 0.8fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .dropdown-button,
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            textarea {
+                min-height: 300px;
+                font-size: 0.75rem;
+                padding-left: 3.5rem;
+            }
+            
+            .line-numbers {
+                min-width: 2.5rem;
+                font-size: 0.75rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s ease;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        .panel:hover {
+            transform: translateY(-2px);
+        }
+        
+        .panel-header {
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-darker);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+        
+        .panel-content {
+            padding: 1.5rem;
+            overflow: visible;
+            position: relative;
+        }
+        
+        .editor-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+        
+        .line-numbers {
+            position: absolute;
+            left: 0;
+            top: 0;
+            padding: 1.25rem 0.75rem;
+            background: var(--bg-darker);
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            user-select: none;
+            pointer-events: none;
+            border-right: 1px solid var(--border);
+            text-align: right;
+            min-width: 3rem;
+            overflow: hidden;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 500px;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            padding: 1.25rem 1.25rem 1.25rem 4.5rem;
+            resize: vertical;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            z-index: 2;
+            overflow: auto;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+        
+        textarea::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 10;
+            padding-top: 0.5rem;
+        }
+        
+        button {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--accent-green);
+            color: var(--bg-dark);
+            box-shadow: 0 2px 8px rgba(63, 185, 80, 0.3);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #4ac959;
+            box-shadow: 0 4px 12px rgba(63, 185, 80, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-darker);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border);
+            border-color: var(--text-secondary);
+        }
+        
+        .btn-purple {
+            background: var(--accent-purple);
+            color: var(--bg-dark);
+            box-shadow: 0 2px 8px rgba(188, 140, 255, 0.3);
+        }
+        
+        .btn-purple:hover:not(:disabled) {
+            background: #c9a3ff;
+            box-shadow: 0 4px 12px rgba(188, 140, 255, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .dropdown {
+            position: relative;
+            z-index: 100;
+        }
+        
+        .dropdown-button {
+            background: var(--bg-panel);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.875rem 1.75rem;
+            cursor: pointer;
+        }
+        
+        .dropdown-button:hover {
+            background: var(--border);
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 0.5rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            min-width: 300px;
+            max-width: 400px;
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .dropdown.active .dropdown-content {
+            display: block;
+            animation: dropdownSlide 0.2s ease-out;
+        }
+        
+        @keyframes dropdownSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .dropdown-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-item:hover {
+            background: var(--bg-darker);
+        }
+        
+        .dropdown-item-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent-blue);
+            margin-bottom: 0.25rem;
+        }
+        
+        .dropdown-item-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .results {
+            position: relative;
+            min-height: 400px;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            animation: popIn 0.3s ease-out;
+        }
+        
+        @keyframes popIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .status-success {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+        
+        .status-error {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+        
+        .status-warning {
+            background: rgba(210, 153, 34, 0.15);
+            color: var(--accent-yellow);
+            border: 1px solid var(--accent-yellow);
+        }
+        
+        .message-list {
+            margin-top: 1.5rem;
+            overflow: visible;
+        }
+        
+        .message-item {
+            padding: 1rem;
+            background: var(--bg-darker);
+            border-left: 3px solid;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            animation: slideIn 0.3s ease-out;
+            animation-fill-mode: both;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .message-item:nth-child(2) { animation-delay: 0.05s; }
+        .message-item:nth-child(3) { animation-delay: 0.1s; }
+        .message-item:nth-child(4) { animation-delay: 0.15s; }
+        .message-item:nth-child(5) { animation-delay: 0.2s; }
+        
+        .message-error {
+            border-left-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+        
+        .message-warning {
+            border-left-color: var(--accent-yellow);
+            color: var(--accent-yellow);
+        }
+        
+        .message-info {
+            border-left-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        
+        .message-success {
+            border-left-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+        
+        .message-header {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .message-line {
+            background: rgba(88, 166, 255, 0.2);
+            padding: 0.125rem 0.375rem;
+            border-radius: 2px;
+            font-size: 0.75rem;
+        }
+        
+        .message-body {
+            color: var(--text-secondary);
+            line-height: 1.5;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .message-suggestion {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(88, 166, 255, 0.1);
+            border-radius: 4px;
+            color: var(--accent-blue);
+            font-size: 0.8rem;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .stat-card {
+            background: var(--bg-darker);
+            padding: 1rem;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+        
+        .stat-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-top: 0.25rem;
+        }
+        
+        .severity-high { color: var(--accent-red); }
+        .severity-medium { color: var(--accent-yellow); }
+        .severity-low { color: var(--accent-blue); }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease-out;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        body.modal-open {
+            overflow: hidden;
+        }
+        
+        code {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        
+        .modal-content {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalSlide 0.3s ease-out;
+            margin: auto;
+        }
+        
+        @keyframes modalSlide {
+            from {
+                transform: scale(0.9) translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            color: var(--accent-red);
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
+        }
+        
+        .export-option {
+            padding: 1rem;
+            background: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .export-option:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+        }
+        
+        .export-option-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent-blue);
+            margin-bottom: 0.25rem;
+        }
+        
+        .export-option-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+        
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        
+        footer a:hover {
+            color: var(--accent-green);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--accent-green);
+            border-radius: 4px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--accent-green);
+            z-index: 10001;
+            animation: toastSlide 0.3s ease-out;
+        }
+        
+        @keyframes toastSlide {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grain-overlay"></div>
+    
+    <header>
+        <div class="header-content">
+            <div class="header-left">
+                <h1>SplunkLint</h1>
+                <p class="subtitle">Advanced Dashboard XML Validator & Analyzer</p>
+            </div>
+            <div class="header-right">
+                <a href="https://github.com/sarat1kyan/splunklint" class="github-link" target="_blank">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    Star on GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="toolbar">
+            <div class="dropdown" id="examplesDropdown">
+                <button class="dropdown-button">
+                    📋 Load Example
+                </button>
+                <div class="dropdown-content" id="examplesContent"></div>
+            </div>
+            <button class="btn-secondary" id="formatBtn">
+                ✨ Format XML
+            </button>
+            <button class="btn-secondary" id="downloadBtn" disabled>
+                ⬇️ Download XML
+            </button>
+            <button class="btn-secondary" id="exportBtn" disabled>
+                📊 Export Report
+            </button>
+        </div>
+        
+        <div class="container">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">Dashboard XML Input</span>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-secondary);">
+                        Ctrl/Cmd + Enter to validate
+                    </span>
+                </div>
+                <div class="panel-content">
+                    <div class="editor-wrapper">
+                        <div class="line-numbers" id="lineNumbers">1</div>
+                        <textarea id="xmlInput" spellcheck="false" placeholder="Paste your Splunk dashboard XML here or load an example..."></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary" id="validateBtn">
+                            🔍 Validate XML
+                        </button>
+                        <button class="btn-purple" id="analyzeSPLBtn" disabled>
+                            🔬 Analyze SPL
+                        </button>
+                        <button class="btn-secondary" id="clearBtn">
+                            🗑️ Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel results">
+                <div class="panel-header">
+                    <span class="panel-title">Validation Results</span>
+                    <span id="statusBadge"></span>
+                </div>
+                <div class="panel-content" id="resultsContent">
+                    <p style="color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+                        Paste your XML and click "Validate XML" to check for issues, or load an example to get started.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Export Validation Report</h3>
+                <button class="modal-close" id="closeModal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="export-option" data-format="json">
+                    <div class="export-option-title">JSON Format</div>
+                    <div class="export-option-desc">Machine-readable format for CI/CD integration</div>
+                </div>
+                <div class="export-option" data-format="text">
+                    <div class="export-option-title">Text Report</div>
+                    <div class="export-option-desc">Human-readable format for documentation</div>
+                </div>
+                <div class="export-option" data-format="html">
+                    <div class="export-option-title">HTML Report</div>
+                    <div class="export-option-desc">Styled report with syntax highlighting</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        Built with ❤️ by <a href="https://github.com/sarat1kyan" target="_blank">@sarat1kyan</a> • 
+        <a href="https://github.com/sarat1kyan/splunklint" target="_blank">Open Source</a> • 
+        <a href="https://docs.splunk.com/Documentation/Splunk/latest/Viz/PanelreferenceforSimplifiedXML" target="_blank">Splunk Docs</a>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const xmlInput = document.getElementById('xmlInput');
+        const validateBtn = document.getElementById('validateBtn');
+        const analyzeSPLBtn = document.getElementById('analyzeSPLBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const formatBtn = document.getElementById('formatBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const resultsContent = document.getElementById('resultsContent');
+        const statusBadge = document.getElementById('statusBadge');
+        const lineNumbers = document.getElementById('lineNumbers');
+        const examplesDropdown = document.getElementById('examplesDropdown');
+        const examplesContent = document.getElementById('examplesContent');
+        const exportModal = document.getElementById('exportModal');
+        const closeModal = document.getElementById('closeModal');
+        
+        let validationResult = null;
+        let currentXML = '';
+        
+        // Example dashboards
+        const examples = {
+            simple: {
+                title: "Simple Dashboard",
+                desc: "Basic dashboard with single value and table",
+                xml: `<dashboard>
+  <label>Simple Dashboard</label>
+  <description>A basic dashboard example</description>
+  <row>
+    <panel>
+      <title>Total Events</title>
+      <single>
+        <search>
+          <query>index=main | stats count</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Recent Events</title>
+      <table>
+        <search>
+          <query>index=main | head 100 | table _time, host, source, sourcetype</query>
+          <earliest>-1h</earliest>
+          <latest>now</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+</dashboard>`
+            },
+            advanced: {
+                title: "Advanced Dashboard",
+                desc: "Dashboard with charts, tokens, and drilldowns",
+                xml: `<dashboard>
+  <label>Advanced Analytics Dashboard</label>
+  <description>Comprehensive dashboard with multiple visualizations</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time_range">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="index_name">
+      <label>Index</label>
+      <choice value="*">All</choice>
+      <choice value="main">Main</choice>
+      <choice value="security">Security</choice>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Event Volume Over Time</title>
+      <chart>
+        <search>
+          <query>index=$index_name$ | timechart count by sourcetype</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Event Count</option>
+        <drilldown>
+          <link target="_blank">/app/search/search?q=index=$index_name$&amp;earliest=$time_range.earliest$&amp;latest=$time_range.latest$</link>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Top Sources</title>
+      <chart>
+        <search>
+          <query>index=$index_name$ | top limit=10 source | eval percent=round(percent,2)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Error Events</title>
+      <single>
+        <search>
+          <query>index=$index_name$ (ERROR OR error OR Error) | stats count</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="underLabel">Total Errors</option>
+        <option name="rangeColors">["0x65A637","0xF7BC38","0xF58F39","0xD93F3C"]</option>
+        <option name="rangeValues">[0,100,1000]</option>
+      </single>
+    </panel>
+  </row>
+</dashboard>`
+            },
+            form: {
+                title: "Form Dashboard",
+                desc: "Interactive form with multiple input types",
+                xml: `<form>
+  <label>Interactive Search Form</label>
+  <description>Use inputs to filter and analyze data</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="text" token="search_term">
+      <label>Search Term</label>
+      <default>*</default>
+    </input>
+    <input type="multiselect" token="sourcetype">
+      <label>Source Types</label>
+      <choice value="access_combined">Apache Access</choice>
+      <choice value="secure">Secure Logs</choice>
+      <choice value="syslog">Syslog</choice>
+      <default>access_combined</default>
+      <valuePrefix>sourcetype="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="radio" token="chart_type">
+      <label>Visualization</label>
+      <choice value="timechart">Time Chart</choice>
+      <choice value="chart">Bar Chart</choice>
+      <choice value="table">Table</choice>
+      <default>timechart</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Search Results</title>
+      <$chart_type$>
+        <search>
+          <query>index=main $search_term$ ($sourcetype$) | stats count by host</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+      </$chart_type$>
+    </panel>
+  </row>
+</form>`
+            },
+            common_errors: {
+                title: "Common Errors Example",
+                desc: "Dashboard with intentional errors for testing",
+                xml: `<dashboard>
+  <label>Dashboard with Issues</label>
+  <row>
+    <panel>
+      <title>Panel Missing Visualization</title>
+    </panel>
+    <panel>
+      <single>
+        <search>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+      </single>
+    </panel>
+    <panel>
+      <title>Deprecated Element</title>
+      <single>
+        <searchName>saved_search_name</searchName>
+      </single>
+    </panel>
+  </row>
+</dashboard>`
+            }
+        };
+        
+        // Populate examples dropdown
+        Object.keys(examples).forEach(key => {
+            const example = examples[key];
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.innerHTML = `
+                <div class="dropdown-item-title">${example.title}</div>
+                <div class="dropdown-item-desc">${example.desc}</div>
+            `;
+            item.onclick = () => {
+                xmlInput.value = example.xml;
+                updateLineNumbers();
+                examplesDropdown.classList.remove('active');
+                showToast('Example loaded successfully');
+            };
+            examplesContent.appendChild(item);
+        });
+        
+        // Toggle dropdown
+        examplesDropdown.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown-content')) {
+                examplesDropdown.classList.toggle('active');
+            }
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!examplesDropdown.contains(e.target)) {
+                examplesDropdown.classList.remove('active');
+            }
+        });
+        
+        // Update line numbers
+        function updateLineNumbers() {
+            const lines = xmlInput.value.split('\n').length;
+            lineNumbers.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('\n');
+        }
+        
+        xmlInput.addEventListener('input', updateLineNumbers);
+        xmlInput.addEventListener('scroll', () => {
+            lineNumbers.scrollTop = xmlInput.scrollTop;
+        });
+        
+        // Clear button
+        clearBtn.addEventListener('click', () => {
+            xmlInput.value = '';
+            updateLineNumbers();
+            resultsContent.innerHTML = '<p style="color: var(--text-secondary); font-family: \'JetBrains Mono\', monospace; font-size: 0.85rem;">Paste your XML and click "Validate XML" to check for issues, or load an example to get started.</p>';
+            statusBadge.innerHTML = '';
+            downloadBtn.disabled = true;
+            exportBtn.disabled = true;
+            analyzeSPLBtn.disabled = true;
+            validationResult = null;
+            showToast('Editor cleared');
+        });
+        
+        // Format XML button
+        formatBtn.addEventListener('click', () => {
+            const xmlText = xmlInput.value.trim();
+            if (!xmlText) {
+                showToast('No XML to format', 'error');
+                return;
+            }
+            
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                const formatted = formatXML(xmlDoc);
+                xmlInput.value = formatted;
+                updateLineNumbers();
+                showToast('XML formatted successfully');
+            } catch (e) {
+                showToast('Failed to format XML', 'error');
+            }
+        });
+        
+        // Format XML helper
+        function formatXML(xml, indent = 0) {
+            const serializer = new XMLSerializer();
+            let xmlString = serializer.serializeToString(xml);
+            
+            // Simple formatting
+            xmlString = xmlString.replace(/></g, '>\n<');
+            const lines = xmlString.split('\n');
+            let formatted = '';
+            let currentIndent = 0;
+            
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('</')) {
+                    currentIndent--;
+                }
+                formatted += '  '.repeat(Math.max(0, currentIndent)) + trimmed + '\n';
+                if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>') && !trimmed.includes('</')) {
+                    currentIndent++;
+                }
+            });
+            
+            return formatted.trim();
+        }
+        
+        // Download XML button
+        downloadBtn.addEventListener('click', () => {
+            const xmlText = xmlInput.value.trim();
+            if (!xmlText) return;
+            
+            const blob = new Blob([xmlText], { type: 'text/xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dashboard.xml';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('XML downloaded');
+        });
+        
+        // Export modal
+        exportBtn.addEventListener('click', () => {
+            exportModal.classList.add('active');
+            document.body.classList.add('modal-open');
+        });
+        
+        closeModal.addEventListener('click', () => {
+            exportModal.classList.remove('active');
+            document.body.classList.remove('modal-open');
+        });
+        
+        exportModal.addEventListener('click', (e) => {
+            if (e.target === exportModal) {
+                exportModal.classList.remove('active');
+                document.body.classList.remove('modal-open');
+            }
+        });
+        
+        // Export options
+        document.querySelectorAll('.export-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const format = option.dataset.format;
+                exportReport(format);
+                exportModal.classList.remove('active');
+                document.body.classList.remove('modal-open');
+            });
+        });
+        
+        // Export report
+        function exportReport(format) {
+            if (!validationResult) return;
+            
+            let content, mimeType, filename;
+            
+            if (format === 'json') {
+                content = JSON.stringify(validationResult, null, 2);
+                mimeType = 'application/json';
+                filename = 'splunklint-report.json';
+            } else if (format === 'text') {
+                content = generateTextReport(validationResult);
+                mimeType = 'text/plain';
+                filename = 'splunklint-report.txt';
+            } else if (format === 'html') {
+                content = generateHTMLReport(validationResult);
+                mimeType = 'text/html';
+                filename = 'splunklint-report.html';
+            }
+            
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Report exported as ${format.toUpperCase()}`);
+        }
+        
+        // Generate text report
+        function generateTextReport(result) {
+            let text = '========================================\n';
+            text += 'SPLUNKLINT VALIDATION REPORT\n';
+            text += '========================================\n\n';
+            text += `Date: ${new Date().toLocaleString()}\n`;
+            text += `Status: ${result.valid && result.errors.length === 0 ? 'VALID' : 'INVALID'}\n\n`;
+            
+            text += 'STATISTICS:\n';
+            text += `- Panels: ${result.stats.panels}\n`;
+            text += `- Searches: ${result.stats.searches}\n`;
+            text += `- Rows: ${result.stats.rows}\n`;
+            text += `- Errors: ${result.errors.length}\n`;
+            text += `- Warnings: ${result.warnings.length}\n\n`;
+            
+            if (result.errors.length > 0) {
+                text += 'ERRORS:\n';
+                result.errors.forEach((error, i) => {
+                    text += `${i + 1}. ${error.title}\n`;
+                    text += `   ${error.message}\n\n`;
+                });
+            }
+            
+            if (result.warnings.length > 0) {
+                text += 'WARNINGS:\n';
+                result.warnings.forEach((warning, i) => {
+                    text += `${i + 1}. ${warning.title}\n`;
+                    text += `   ${warning.message}\n\n`;
+                });
+            }
+            
+            return text;
+        }
+        
+        // Generate HTML report
+        function generateHTMLReport(result) {
+            return `<!DOCTYPE html>
+<html>
+<head>
+    <title>SplunkLint Report</title>
+    <style>
+        body { font-family: monospace; background: #0a0e14; color: #e6edf3; padding: 2rem; }
+        h1 { color: #3fb950; }
+        .stat { display: inline-block; margin: 1rem; padding: 1rem; background: #151921; border: 1px solid #30363d; }
+        .error { color: #f85149; }
+        .warning { color: #d29922; }
+        .success { color: #3fb950; }
+    </style>
+</head>
+<body>
+    <h1>SplunkLint Validation Report</h1>
+    <p>Generated: ${new Date().toLocaleString()}</p>
+    <p class="${result.valid ? 'success' : 'error'}">Status: ${result.valid && result.errors.length === 0 ? 'VALID' : 'INVALID'}</p>
+    
+    <h2>Statistics</h2>
+    <div class="stat">Panels: ${result.stats.panels}</div>
+    <div class="stat">Searches: ${result.stats.searches}</div>
+    <div class="stat">Rows: ${result.stats.rows}</div>
+    
+    ${result.errors.length > 0 ? `<h2>Errors (${result.errors.length})</h2>
+    <ul>${result.errors.map(e => `<li class="error"><strong>${e.title}:</strong> ${e.message}</li>`).join('')}</ul>` : ''}
+    
+    ${result.warnings.length > 0 ? `<h2>Warnings (${result.warnings.length})</h2>
+    <ul>${result.warnings.map(w => `<li class="warning"><strong>${w.title}:</strong> ${w.message}</li>`).join('')}</ul>` : ''}
+</body>
+</html>`;
+        }
+        
+        // Validate button
+        validateBtn.addEventListener('click', validateXML);
+        
+        function validateXML() {
+            const xmlText = xmlInput.value.trim();
+            
+            if (!xmlText) {
+                showResults({
+                    valid: false,
+                    errors: [{
+                        type: 'error',
+                        title: 'Empty Input',
+                        message: 'Please paste XML content to validate.'
+                    }],
+                    warnings: [],
+                    info: [],
+                    stats: { panels: 0, searches: 0, rows: 0, tokens: 0, drilldowns: 0 }
+                });
+                return;
+            }
+            
+            validateBtn.innerHTML = '<span class="loading"></span> Validating...';
+            validateBtn.disabled = true;
+            
+            setTimeout(() => {
+                const result = performValidation(xmlText);
+                validationResult = result;
+                currentXML = xmlText;
+                showResults(result);
+                validateBtn.innerHTML = '🔍 Validate XML';
+                validateBtn.disabled = false;
+                downloadBtn.disabled = false;
+                exportBtn.disabled = false;
+                analyzeSPLBtn.disabled = result.stats.searches === 0;
+            }, 300);
+        }
+        
+        // Analyze SPL button
+        analyzeSPLBtn.addEventListener('click', () => {
+            if (!currentXML) return;
+            
+            analyzeSPLBtn.innerHTML = '<span class="loading"></span> Analyzing...';
+            analyzeSPLBtn.disabled = true;
+            
+            setTimeout(() => {
+                const splAnalysis = analyzeSPL(currentXML);
+                showSPLAnalysis(splAnalysis);
+                analyzeSPLBtn.innerHTML = '🔬 Analyze SPL';
+                analyzeSPLBtn.disabled = false;
+            }, 500);
+        });
+        
+        // SPL Analysis
+        function analyzeSPL(xmlText) {
+            const analysis = {
+                queries: [],
+                issues: [],
+                recommendations: []
+            };
+            
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                const queries = xmlDoc.querySelectorAll('query');
+                
+                queries.forEach((queryElem, idx) => {
+                    const query = queryElem.textContent.trim();
+                    const queryAnalysis = {
+                        index: idx + 1,
+                        query: query,
+                        issues: [],
+                        performance: 'good'
+                    };
+                    
+                    // Check for wildcards at the beginning
+                    if (query.match(/^\s*\*/)) {
+                        queryAnalysis.issues.push({
+                            severity: 'high',
+                            message: 'Leading wildcard search can be very slow',
+                            suggestion: 'Specify an index or more specific search terms'
+                        });
+                        queryAnalysis.performance = 'poor';
+                    }
+                    
+                    // Check if index is specified
+                    if (!query.toLowerCase().includes('index=')) {
+                        queryAnalysis.issues.push({
+                            severity: 'medium',
+                            message: 'No index specified',
+                            suggestion: 'Add index=<indexname> to improve search performance'
+                        });
+                        if (queryAnalysis.performance === 'good') queryAnalysis.performance = 'fair';
+                    }
+                    
+                    // Check for OR with many terms
+                    const orCount = (query.match(/\sOR\s/gi) || []).length;
+                    if (orCount > 10) {
+                        queryAnalysis.issues.push({
+                            severity: 'medium',
+                            message: `Many OR clauses (${orCount}) detected`,
+                            suggestion: 'Consider using IN operator or regex for better performance'
+                        });
+                    }
+                    
+                    // Check for inefficient wildcards
+                    if (query.match(/\*[^"\s]*\*/g)) {
+                        queryAnalysis.issues.push({
+                            severity: 'low',
+                            message: 'Multiple wildcards in term detected',
+                            suggestion: 'Reduce wildcard usage for better performance'
+                        });
+                    }
+                    
+                    // Check for transaction command
+                    if (query.toLowerCase().includes('| transaction')) {
+                        queryAnalysis.issues.push({
+                            severity: 'high',
+                            message: 'transaction command can be resource-intensive',
+                            suggestion: 'Consider using stats with by clause instead'
+                        });
+                        queryAnalysis.performance = 'poor';
+                    }
+                    
+                    // Check for join command
+                    if (query.toLowerCase().includes('| join')) {
+                        queryAnalysis.issues.push({
+                            severity: 'medium',
+                            message: 'join command can impact performance',
+                            suggestion: 'Consider using stats or append instead'
+                        });
+                        if (queryAnalysis.performance === 'good') queryAnalysis.performance = 'fair';
+                    }
+                    
+                    // Check for subsearch
+                    if (query.includes('[') && query.includes(']')) {
+                        queryAnalysis.issues.push({
+                            severity: 'medium',
+                            message: 'Subsearch detected',
+                            suggestion: 'Subsearches are limited to 50,000 results. Consider alternatives.'
+                        });
+                    }
+                    
+                    // Check for eval with heavy operations
+                    if (query.toLowerCase().match(/\|\s*eval.*case\(/)) {
+                        queryAnalysis.issues.push({
+                            severity: 'low',
+                            message: 'Complex eval with case() function',
+                            suggestion: 'Consider using lookup tables for complex mappings'
+                        });
+                    }
+                    
+                    // Check for head/tail without limit
+                    const headMatch = query.match(/\|\s*head\s+(\d+)/);
+                    if (headMatch && parseInt(headMatch[1]) > 10000) {
+                        queryAnalysis.issues.push({
+                            severity: 'low',
+                            message: 'Large head limit may impact performance',
+                            suggestion: 'Consider reducing the limit or using sampling'
+                        });
+                    }
+                    
+                    // Check for regex without index
+                    if (query.toLowerCase().includes('| regex') && !query.toLowerCase().includes('index=')) {
+                        queryAnalysis.issues.push({
+                            severity: 'high',
+                            message: 'regex without index specification',
+                            suggestion: 'Specify an index before using regex'
+                        });
+                    }
+                    
+                    analysis.queries.push(queryAnalysis);
+                });
+                
+                // Generate overall recommendations
+                if (analysis.queries.some(q => q.performance === 'poor')) {
+                    analysis.recommendations.push('Critical performance issues detected. Review queries marked as "poor".');
+                }
+                if (analysis.queries.filter(q => !q.query.toLowerCase().includes('index=')).length > 0) {
+                    analysis.recommendations.push('Specify indexes in all searches to improve performance.');
+                }
+                
+            } catch (e) {
+                analysis.issues.push({
+                    severity: 'high',
+                    message: 'Failed to analyze SPL queries',
+                    suggestion: e.message
+                });
+            }
+            
+            return analysis;
+        }
+        
+        // Show SPL Analysis
+        function showSPLAnalysis(analysis) {
+            let html = '<h3 style="font-family: JetBrains Mono, monospace; margin-bottom: 1rem; color: var(--accent-purple);">SPL Query Analysis</h3>';
+            
+            if (analysis.queries.length === 0) {
+                html += '<p style="color: var(--text-secondary);">No queries found to analyze.</p>';
+            } else {
+                analysis.queries.forEach(queryAnalysis => {
+                    const perfColor = queryAnalysis.performance === 'good' ? 'var(--accent-green)' : 
+                                    queryAnalysis.performance === 'fair' ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                    
+                    html += `<div class="message-item message-info" style="border-left-color: ${perfColor}">
+                        <div class="message-header">
+                            Query ${queryAnalysis.index}
+                            <span style="background: ${perfColor}; color: var(--bg-dark); padding: 0.125rem 0.5rem; border-radius: 2px; font-size: 0.75rem; margin-left: 0.5rem;">
+                                ${queryAnalysis.performance.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="message-body">
+                            <code style="display: block; background: var(--bg-panel); padding: 0.5rem; border-radius: 4px; margin: 0.5rem 0; overflow-x: auto;">
+                                ${escapeHtml(queryAnalysis.query)}
+                            </code>`;
+                    
+                    if (queryAnalysis.issues.length > 0) {
+                        html += '<div style="margin-top: 0.75rem;">';
+                        queryAnalysis.issues.forEach(issue => {
+                            const severityColor = issue.severity === 'high' ? 'var(--accent-red)' : 
+                                                issue.severity === 'medium' ? 'var(--accent-yellow)' : 'var(--accent-blue)';
+                            html += `<div style="margin-bottom: 0.5rem;">
+                                <span class="severity-${issue.severity}" style="font-weight: 600;">⚠ ${issue.message}</span><br>
+                                <span style="color: var(--accent-blue); font-size: 0.8rem;">💡 ${issue.suggestion}</span>
+                            </div>`;
+                        });
+                        html += '</div>';
+                    } else {
+                        html += '<div style="color: var(--accent-green); margin-top: 0.5rem;">✓ No issues detected</div>';
+                    }
+                    
+                    html += '</div></div>';
+                });
+                
+                if (analysis.recommendations.length > 0) {
+                    html += '<div class="message-item message-warning"><div class="message-header">Overall Recommendations</div><div class="message-body"><ul style="margin-left: 1.5rem;">';
+                    analysis.recommendations.forEach(rec => {
+                        html += `<li>${rec}</li>`;
+                    });
+                    html += '</ul></div></div>';
+                }
+            }
+            
+            resultsContent.innerHTML = html;
+            statusBadge.innerHTML = '<span class="status-badge status-success">📊 Analysis Complete</span>';
+        }
+        
+        // Perform validation
+        function performValidation(xmlText) {
+            const result = {
+                valid: true,
+                errors: [],
+                warnings: [],
+                info: [],
+                stats: {
+                    panels: 0,
+                    searches: 0,
+                    rows: 0,
+                    tokens: 0,
+                    drilldowns: 0
+                }
+            };
+            
+            // Parse XML
+            let xmlDoc;
+            try {
+                const parser = new DOMParser();
+                xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                const parserError = xmlDoc.querySelector('parsererror');
+                if (parserError) {
+                    result.valid = false;
+                    result.errors.push({
+                        type: 'error',
+                        title: 'XML Parse Error',
+                        message: parserError.textContent || 'Failed to parse XML. Check for syntax errors.',
+                        line: extractLineNumber(parserError.textContent)
+                    });
+                    return result;
+                }
+            } catch (e) {
+                result.valid = false;
+                result.errors.push({
+                    type: 'error',
+                    title: 'XML Parse Error',
+                    message: e.message
+                });
+                return result;
+            }
+            
+            // Validate root element
+            const rootElement = xmlDoc.documentElement;
+            const validRoots = ['dashboard', 'form'];
+            
+            if (!validRoots.includes(rootElement.tagName)) {
+                result.valid = false;
+                result.errors.push({
+                    type: 'error',
+                    title: 'Invalid Root Element',
+                    message: `Root element must be <dashboard> or <form>, found: <${rootElement.tagName}>`,
+                    suggestion: `Change <${rootElement.tagName}> to <dashboard> or <form>`
+                });
+                return result;
+            }
+            
+            result.info.push({
+                type: 'info',
+                title: 'Root Element Valid',
+                message: `✓ Valid <${rootElement.tagName}> element detected`
+            });
+            
+            // Check version attribute (deprecated)
+            if (rootElement.hasAttribute('version')) {
+                result.warnings.push({
+                    type: 'warning',
+                    title: 'Deprecated Attribute',
+                    message: 'The "version" attribute on dashboard element is deprecated',
+                    suggestion: 'Remove the version attribute'
+                });
+            }
+            
+            // Check for label
+            const label = xmlDoc.querySelector('label');
+            if (!label || !label.textContent.trim()) {
+                result.warnings.push({
+                    type: 'warning',
+                    title: 'Missing Dashboard Label',
+                    message: 'Dashboard should have a <label> element with text content',
+                    suggestion: 'Add <label>Your Dashboard Title</label> after the root element'
+                });
+            }
+            
+            // Check for description
+            const description = xmlDoc.querySelector('description');
+            if (!description) {
+                result.warnings.push({
+                    type: 'warning',
+                    title: 'Missing Description',
+                    message: 'Consider adding a <description> element',
+                    suggestion: 'Add <description>Dashboard purpose and context</description>'
+                });
+            }
+            
+            // Count and validate rows
+            const rows = xmlDoc.querySelectorAll('row');
+            result.stats.rows = rows.length;
+            
+            if (rows.length === 0) {
+                result.warnings.push({
+                    type: 'warning',
+                    title: 'No Rows',
+                    message: 'Dashboard has no <row> elements',
+                    suggestion: 'Add <row> elements to organize panels'
+                });
+            }
+            
+            // Validate panels
+            const panels = xmlDoc.querySelectorAll('panel');
+            result.stats.panels = panels.length;
+            
+            if (panels.length === 0) {
+                result.errors.push({
+                    type: 'error',
+                    title: 'No Panels',
+                    message: 'Dashboard must have at least one panel',
+                    suggestion: 'Add <panel> elements with visualizations'
+                });
+                result.valid = false;
+            }
+            
+            const validVizTypes = ['single', 'table', 'chart', 'event', 'html', 'map', 'viz'];
+            
+            panels.forEach((panel, index) => {
+                const panelNum = index + 1;
+                
+                // Check for panel ID (for drilldowns)
+                if (!panel.getAttribute('id')) {
+                    result.info.push({
+                        type: 'info',
+                        title: `Panel ${panelNum}: Consider Adding ID`,
+                        message: 'Panel ID enables drilldown capabilities',
+                        suggestion: `Add id="panel_${panelNum}" to the panel element`
+                    });
+                }
+                
+                // Check for title
+                const panelTitle = panel.querySelector('title');
+                if (!panelTitle) {
+                    result.warnings.push({
+                        type: 'warning',
+                        title: `Panel ${panelNum}: Missing Title`,
+                        message: 'Panel should have a <title> element',
+                        suggestion: 'Add <title>Panel Title</title> inside the panel'
+                    });
+                }
+                
+                // Check for visualization type
+                let hasVizType = false;
+                validVizTypes.forEach(vizType => {
+                    if (panel.querySelector(vizType)) {
+                        hasVizType = true;
+                    }
+                });
+                
+                if (!hasVizType) {
+                    result.errors.push({
+                        type: 'error',
+                        title: `Panel ${panelNum}: Missing Visualization`,
+                        message: `Panel must contain one of: ${validVizTypes.join(', ')}`,
+                        suggestion: 'Add a visualization element like <chart>, <table>, or <single>'
+                    });
+                    result.valid = false;
+                }
+                
+                // Check for deprecated elements
+                const deprecatedElements = ['searchName', 'searchString', 'searchTemplate'];
+                deprecatedElements.forEach(elem => {
+                    if (panel.querySelector(elem)) {
+                        result.warnings.push({
+                            type: 'warning',
+                            title: `Panel ${panelNum}: Deprecated Element`,
+                            message: `<${elem}> is deprecated`,
+                            suggestion: 'Use <search><query>...</query></search> instead'
+                        });
+                    }
+                });
+            });
+            
+            // Validate searches
+            const searches = xmlDoc.querySelectorAll('search');
+            result.stats.searches = searches.length;
+            
+            searches.forEach((search, index) => {
+                const searchNum = index + 1;
+                
+                // Check for query
+                const query = search.querySelector('query');
+                if (!query) {
+                    result.errors.push({
+                        type: 'error',
+                        title: `Search ${searchNum}: Missing Query`,
+                        message: 'Search element must contain a <query> element',
+                        suggestion: 'Add <query>your SPL query</query> inside the search'
+                    });
+                    result.valid = false;
+                } else if (!query.textContent.trim()) {
+                    result.errors.push({
+                        type: 'error',
+                        title: `Search ${searchNum}: Empty Query`,
+                        message: 'Query element cannot be empty',
+                        suggestion: 'Add a valid SPL query'
+                    });
+                    result.valid = false;
+                }
+                
+                // Check for time bounds
+                const earliest = search.querySelector('earliest');
+                const latest = search.querySelector('latest');
+                
+                if (!earliest && !latest) {
+                    result.warnings.push({
+                        type: 'warning',
+                        title: `Search ${searchNum}: No Time Bounds`,
+                        message: 'Search should specify time range',
+                        suggestion: 'Add <earliest>-24h</earliest> and <latest>now</latest>'
+                    });
+                }
+                
+                // Check for refresh intervals
+                const refresh = search.querySelector('refresh');
+                const refreshDisplay = search.querySelector('refreshDisplay');
+                
+                if (refresh) {
+                    const interval = refresh.textContent.trim();
+                    const seconds = parseInt(interval);
+                    if (seconds < 30) {
+                        result.warnings.push({
+                            type: 'warning',
+                            title: `Search ${searchNum}: Aggressive Refresh`,
+                            message: `Refresh interval of ${interval}s may impact performance`,
+                            suggestion: 'Consider increasing refresh interval to 30s or more'
+                        });
+                    }
+                }
+            });
+            
+            // Check for fieldset (forms)
+            if (rootElement.tagName === 'form') {
+                const fieldset = xmlDoc.querySelector('fieldset');
+                if (!fieldset) {
+                    result.warnings.push({
+                        type: 'warning',
+                        title: 'Form Without Fieldset',
+                        message: 'Form dashboards should have a <fieldset> for inputs',
+                        suggestion: 'Add <fieldset submitButton="true"> with input elements'
+                    });
+                }
+                
+                // Count tokens
+                const inputs = xmlDoc.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.hasAttribute('token')) {
+                        result.stats.tokens++;
+                    }
+                });
+                
+                // Check submit button
+                if (fieldset && fieldset.getAttribute('submitButton') !== 'true') {
+                    result.info.push({
+                        type: 'info',
+                        title: 'Consider Submit Button',
+                        message: 'Form could benefit from a submit button',
+                        suggestion: 'Add submitButton="true" to fieldset element'
+                    });
+                }
+            }
+            
+            // Check for drilldowns
+            const drilldowns = xmlDoc.querySelectorAll('drilldown');
+            result.stats.drilldowns = drilldowns.length;
+            
+            drilldowns.forEach((drilldown, index) => {
+                const link = drilldown.querySelector('link');
+                if (!link) {
+                    result.warnings.push({
+                        type: 'warning',
+                        title: `Drilldown ${index + 1}: Missing Link`,
+                        message: 'Drilldown should contain a <link> element',
+                        suggestion: 'Add <link target="_blank">URL or search</link>'
+                    });
+                }
+            });
+            
+            // Check for security issues
+            const allText = xmlText.toLowerCase();
+            const securityPatterns = [
+                { pattern: /password\s*=\s*["'][^"']+["']/, message: 'Hardcoded password detected' },
+                { pattern: /api[_-]?key\s*=\s*["'][^"']+["']/, message: 'Hardcoded API key detected' },
+                { pattern: /token\s*=\s*["'][^"']+["']/, message: 'Hardcoded token detected (if authentication token)' },
+                { pattern: /secret\s*=\s*["'][^"']+["']/, message: 'Hardcoded secret detected' }
+            ];
+            
+            securityPatterns.forEach(({ pattern, message }) => {
+                if (pattern.test(allText)) {
+                    result.errors.push({
+                        type: 'error',
+                        title: 'Security Issue',
+                        message: message,
+                        suggestion: 'Remove credentials and use secure storage methods'
+                    });
+                    result.valid = false;
+                }
+            });
+            
+            // Performance recommendations
+            if (result.stats.searches > 10) {
+                result.warnings.push({
+                    type: 'warning',
+                    title: 'Many Searches',
+                    message: `Dashboard has ${result.stats.searches} searches which may impact load time`,
+                    suggestion: 'Consider using base searches and post-process searches'
+                });
+            }
+            
+            if (result.stats.panels > 15) {
+                result.warnings.push({
+                    type: 'warning',
+                    title: 'Many Panels',
+                    message: `Dashboard has ${result.stats.panels} panels which may affect performance`,
+                    suggestion: 'Consider splitting into multiple dashboards'
+                });
+            }
+            
+            // Success message
+            if (result.valid && result.errors.length === 0) {
+                result.info.push({
+                    type: 'success',
+                    title: '✓ Validation Successful',
+                    message: 'Your dashboard XML is valid and ready to deploy!'
+                });
+            }
+            
+            return result;
+        }
+        
+        // Show results
+        function showResults(result) {
+            // Update status badge
+            if (result.valid && result.errors.length === 0) {
+                statusBadge.innerHTML = '<span class="status-badge status-success">✓ Valid</span>';
+            } else if (result.errors.length > 0) {
+                statusBadge.innerHTML = '<span class="status-badge status-error">✗ Errors Found</span>';
+            } else {
+                statusBadge.innerHTML = '<span class="status-badge status-warning">⚠ Warnings</span>';
+            }
+            
+            // Build results HTML
+            let html = '';
+            
+            // Show stats
+            html += '<div class="stats-grid">';
+            html += `<div class="stat-card"><div class="stat-label">Panels</div><div class="stat-value">${result.stats.panels}</div></div>`;
+            html += `<div class="stat-card"><div class="stat-label">Searches</div><div class="stat-value">${result.stats.searches}</div></div>`;
+            html += `<div class="stat-card"><div class="stat-label">Rows</div><div class="stat-value">${result.stats.rows}</div></div>`;
+            if (result.stats.tokens > 0) {
+                html += `<div class="stat-card"><div class="stat-label">Tokens</div><div class="stat-value">${result.stats.tokens}</div></div>`;
+            }
+            if (result.stats.drilldowns > 0) {
+                html += `<div class="stat-card"><div class="stat-label">Drilldowns</div><div class="stat-value">${result.stats.drilldowns}</div></div>`;
+            }
+            html += `<div class="stat-card"><div class="stat-label">Errors</div><div class="stat-value severity-high">${result.errors.length}</div></div>`;
+            html += `<div class="stat-card"><div class="stat-label">Warnings</div><div class="stat-value severity-medium">${result.warnings.length}</div></div>`;
+            html += '</div>';
+            
+            // Show messages
+            if (result.errors.length > 0 || result.warnings.length > 0 || result.info.length > 0) {
+                html += '<div class="message-list">';
+                
+                // Errors first
+                result.errors.forEach(error => {
+                    html += `
+                        <div class="message-item message-error">
+                            <div class="message-header">
+                                ${error.line ? `<span class="message-line">Line ${error.line}</span>` : ''}
+                                ${error.title}
+                            </div>
+                            <div class="message-body">${error.message}</div>
+                            ${error.suggestion ? `<div class="message-suggestion">💡 ${error.suggestion}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                // Then warnings
+                result.warnings.forEach(warning => {
+                    html += `
+                        <div class="message-item message-warning">
+                            <div class="message-header">${warning.title}</div>
+                            <div class="message-body">${warning.message}</div>
+                            ${warning.suggestion ? `<div class="message-suggestion">💡 ${warning.suggestion}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                // Finally info
+                result.info.forEach(info => {
+                    const messageClass = info.type === 'success' ? 'message-success' : 'message-info';
+                    html += `
+                        <div class="message-item ${messageClass}">
+                            <div class="message-header">${info.title}</div>
+                            <div class="message-body">${info.message}</div>
+                            ${info.suggestion ? `<div class="message-suggestion">💡 ${info.suggestion}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            resultsContent.innerHTML = html;
+        }
+        
+        // Extract line number from error message
+        function extractLineNumber(errorText) {
+            const match = errorText.match(/line\s+(\d+)/i);
+            return match ? match[1] : null;
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            if (type === 'error') {
+                toast.style.borderColor = 'var(--accent-red)';
+                toast.style.color = 'var(--accent-red)';
+            }
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'toastSlide 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Keyboard shortcuts
+        xmlInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                validateXML();
+            }
+        });
+        
+        // Initialize line numbers
+        updateLineNumbers();
+    </script>
+</body>
+</html>
