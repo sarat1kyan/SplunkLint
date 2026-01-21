@@ -18,7 +18,7 @@
 **Note:** This is a community-maintained, non-official tool. It is not affiliated with Splunk.
 
 ---
-![icon](https://github.com/user-attachments/assets/22bd768a-fe5f-4bd5-b576-dba395826fb8)
+![icon](https://github.com/user-attachments/assets/dde65df1-b362-40b6-b80b-3b236f36599f)
 
 </div>
 
@@ -42,7 +42,7 @@
 
 ## 🎯 Overview
 
-**SplunkLint** is a comprehensive, browser-based tool for validating and analyzing Splunk Dashboard XML. It provides real-time feedback, actionable recommendations, and deep SPL query analysis - all without sending your data anywhere.
+**SplunkLint** is a comprehensive, browser-based tool for validating and analyzing Splunk Dashboard XML. It provides real-time feedback, actionable recommendations, and deep SPL query analysis—all without sending your data anywhere.
 
 ### Why SplunkLint?
 
