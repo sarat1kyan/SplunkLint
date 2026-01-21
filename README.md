@@ -6,25 +6,26 @@
 
 **Advanced Dashboard XML Validator & SPL Analyzer for Splunk**
 
-*Validate, analyze, and optimize your Splunk dashboards—entirely in your browser*
+*Validate, analyze, and optimize your Splunk dashboards—entirely in your browser or directly in Splunk*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Splunkbase](https://img.shields.io/badge/Splunkbase-Available-00A98F?style=flat-square&logo=splunk)](https://splunkbase.splunk.com/app/8387)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-blue.svg?style=flat-square)](/)
 [![Offline Ready](https://img.shields.io/badge/offline-ready-purple.svg?style=flat-square)](/)
 
-[**Access Here**](https://splunklint.netlify.app) · [Report Bug](https://github.com/sarat1kyan/splunklint/issues) · [Request Feature](https://github.com/sarat1kyan/splunklint/issues)
+[**🌐 Web App**](https://splunklint.netlify.app) · [**📦 Splunk Add-on**](https://splunkbase.splunk.com/app/8387) · [Report Bug](https://github.com/sarat1kyan/splunklint/issues) · [Request Feature](https://github.com/sarat1kyan/splunklint/issues)
 
 **Note:** This is a community-maintained, non-official tool. It is not affiliated with Splunk.
 
 ---
-![icon](https://github.com/user-attachments/assets/dde65df1-b362-40b6-b80b-3b236f36599f)
 
 </div>
 
 ## 📖 Table of Contents
 
 - [Overview](#-overview)
+- [Splunk Add-on](#-splunk-add-on--enhanced-toolkit)
 - [Features](#-features)
 - [Quick Start](#-quick-start)
 - [Installation](#-installation)
@@ -53,6 +54,66 @@
 | 📚 **Learning best practices** | Get contextual suggestions based on Splunk patterns |
 | ⏱️ **Deployment delays** | Validate locally without Splunk access |
 | 🔒 **Data privacy concerns** | Everything runs in your browser—zero data transmission |
+
+---
+
+## 📦 Splunk Add-on — Enhanced Toolkit
+
+**Want even more features?** Install the **SplunkLint Add-on** directly in your Splunk environment!
+
+<div align="center">
+
+[![Download from Splunkbase](https://img.shields.io/badge/Download-Splunkbase-00A98F?style=for-the-badge&logo=splunk&logoColor=white)](https://splunkbase.splunk.com/app/8387)
+
+<img width="1919" height="872" alt="6Screenshot 2026-01-21 132309" src="https://github.com/user-attachments/assets/da8661f3-1734-4049-b0ee-15fe5b18e617" />
+<img width="1917" height="877" alt="5Screenshot 2026-01-21 132249" src="https://github.com/user-attachments/assets/411a8ffb-f85f-4a77-ac34-a4e7a68652bf" />
+<img width="1916" height="780" alt="4Screenshot 2026-01-21 132227" src="https://github.com/user-attachments/assets/37e70ba0-d15b-4233-aceb-c0014b9d4964" />
+<img width="1916" height="873" alt="3Screenshot 2026-01-21 132156" src="https://github.com/user-attachments/assets/6294f139-9a22-4f38-b37d-fff7c627e636" />
+<img width="1917" height="876" alt="2Screenshot 2026-01-21 132116" src="https://github.com/user-attachments/assets/e1afa945-313b-4f93-a046-c9c8ec71d530" />
+<img width="1917" height="866" alt="1Screenshot 2026-01-21 132048" src="https://github.com/user-attachments/assets/4bc63041-f332-4bc0-8046-c5b042bcd057" />
+
+</div>
+
+The Splunk Add-on provides **8 powerful tools** that go far beyond what native Splunk offers:
+
+| Tool | Description |
+|------|-------------|
+| 🔍 **Validate** | Full XML validation with security checks and deprecation warnings |
+| 📊 **Complexity Analyzer** | Dashboard complexity scoring (A-F grade) with optimization recommendations |
+| ⚡ **SPL Optimizer** | Query performance scoring (0-100) with automatic rewrite suggestions |
+| 🔗 **Token Flow Analyzer** | Visualize token dependencies, detect orphan and unused tokens |
+| 🔄 **Dashboard Converter** | Convert Simple XML to Dashboard Studio JSON format |
+| ⚖️ **Dashboard Diff** | Side-by-side comparison of two dashboard versions |
+| 📝 **Docs Generator** | Auto-generate documentation in Markdown, HTML, or Confluence Wiki |
+| ♿ **Accessibility Checker** | WCAG 2.1 compliance audit with remediation guidance |
+
+### Web App vs Splunk Add-on
+
+| Feature | Web App | Splunk Add-on |
+|---------|---------|---------------|
+| XML Validation | ✅ | ✅ |
+| SPL Analysis | ✅ | ✅ |
+| Export Reports | ✅ | ✅ |
+| Complexity Scoring | ❌ | ✅ |
+| SPL Optimizer | ❌ | ✅ |
+| Token Flow Analysis | ❌ | ✅ |
+| Dashboard Studio Converter | ❌ | ✅ |
+| Dashboard Diff/Compare | ❌ | ✅ |
+| Documentation Generator | ❌ | ✅ |
+| Accessibility Audit | ❌ | ✅ |
+| Works Offline | ✅ | ✅ (within Splunk) |
+| No Installation | ✅ | Requires Splunk |
+
+### Install the Add-on
+
+```bash
+# Download from Splunkbase and install via CLI
+splunk install app TA-splunklint.tgz
+
+# Or copy to apps directory
+cp -r TA-splunklint $SPLUNK_HOME/etc/apps/
+splunk restart
+```
 
 ---
 
@@ -440,18 +501,30 @@ if (query.toLowerCase().includes('| transaction')) {
 
 ## 🗺️ Roadmap
 
-### Planned Features
+### Available in Splunk Add-on
+
+These features are now available in the [Splunk Add-on](https://splunkbase.splunk.com/app/8387):
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Dashboard Comparison | ✅ **Available** | Diff two XML files side-by-side |
+| Dashboard Converter | ✅ **Available** | Convert Simple XML to Dashboard Studio JSON |
+| Complexity Analyzer | ✅ **Available** | A-F grading with optimization tips |
+| SPL Optimizer | ✅ **Available** | Query rewrite suggestions |
+| Token Flow Analyzer | ✅ **Available** | Visualize token dependencies |
+| Documentation Generator | ✅ **Available** | Auto-generate docs (Markdown, HTML, Confluence) |
+| Accessibility Checker | ✅ **Available** | WCAG 2.1 compliance audit |
+
+### Planned for Web App
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Dark/Light Theme Toggle | 🔜 Planned | Switch between color themes |
 | Syntax Highlighting | 🔜 Planned | Colorize XML in the editor |
-| Dashboard Comparison | 🔜 Planned | Diff two XML files side-by-side |
 | Visual Preview | 🔜 Planned | Render dashboard structure visually |
 | VS Code Extension | 🔜 Planned | Validate directly in your editor |
 | GitHub Actions | 🔜 Planned | CI/CD integration for pipelines |
 | Custom Rules | 🔜 Planned | User-defined validation rules |
-| Dashboard Converter | 🔜 Planned | Convert between Simple and Advanced XML |
 | REST API Mode | 🔜 Planned | Programmatic access for automation |
 
 ### Suggesting Features
@@ -490,6 +563,12 @@ Currently, SplunkLint focuses on dashboard XML validation. SPL-only file validat
 <summary><strong>Is this an official Splunk tool?</strong></summary>
 
 **No.** SplunkLint is an independent, open-source project not affiliated with Splunk Inc.
+</details>
+
+<details>
+<summary><strong>What's the difference between the web app and the Splunk Add-on?</strong></summary>
+
+The **web app** is a lightweight, browser-based validator that requires no installation. The **[Splunk Add-on](https://splunkbase.splunk.com/app/8387)** includes all web app features plus 7 additional tools: Complexity Analyzer, SPL Optimizer, Token Flow Analyzer, Dashboard Converter, Dashboard Diff, Documentation Generator, and Accessibility Checker. Install the add-on if you want the full toolkit directly in Splunk.
 </details>
 
 <details>
@@ -606,9 +685,18 @@ If SplunkLint helped you, please consider:
 
 *Validate your Splunk dashboards with confidence*
 
-## 🙏 Acknowledgments
+---
+
+### 🚀 Get the Full Toolkit
+
+[![Download from Splunkbase](https://img.shields.io/badge/Splunk%20Add--on-Download%20Now-00A98F?style=for-the-badge&logo=splunk&logoColor=white)](https://splunkbase.splunk.com/app/8387)
+
+*8 powerful tools including Complexity Analyzer, SPL Optimizer, Token Flow, and more!*
+
+---
 
 **⭐ Star this repo if you found it helpful!**
+
 [![BuyMeACoffee](https://raw.githubusercontent.com/pachadotdev/buymeacoffee-badges/main/bmc-donate-yellow.svg)](https://www.buymeacoffee.com/saratikyan)
 
 [⬆ Back to Top](#-splunklint)
